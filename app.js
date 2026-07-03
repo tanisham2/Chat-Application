@@ -6,6 +6,7 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const rooms = new Set(['general', 'random']);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -19,14 +20,7 @@ io.on('connection', (socket) => {
 
   // Store username with socket
   socket.username = 'Anonymous';
-  // Handle new messages with username
-  socket.on('chat message', (msg) => {
-    io.emit('chat message', {
-      username: socket.username,
-      message: msg,
-      timestamp: new Date().toISOString()
-    });
-  });
+  
   // Handle username change
   socket.on('set username', (username) => {
     const oldUsername = socket.username;
@@ -34,6 +28,48 @@ io.on('connection', (socket) => {
     io.emit('user joined', {
       oldUsername: oldUsername,
       newUsername: socket.username
+    });
+  });
+
+
+socket.on('join room', (room) => {
+    // Leave all rooms except the default one
+    socket.rooms.forEach(r => {
+      if (r !== socket.id) {
+        socket.leave(r);
+        socket.emit('left room', r);
+      }
+    });
+
+    // Join the new room
+    socket.join(room);
+    socket.emit('joined room', room);
+
+    // Notify others in the room
+    socket.to(room).emit('room message', {
+      username: 'System',
+      message: `${socket.username} has joined the room`,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Handle room creation
+  socket.on('create room', (roomName) => {
+    if (!rooms.has(roomName)) {
+      rooms.add(roomName);
+      io.emit('room created', roomName);
+    }
+  });
+
+  // Modify message handler to send to room
+  socket.on('chat message', (data) => {
+    const room = Array.from(socket.rooms).find(r => r !== socket.id) || 'general';
+
+    io.to(room).emit('chat message', {
+      username: socket.username,
+      message: data.message,
+      timestamp: new Date().toISOString(),
+      room: room
     });
   });
 
