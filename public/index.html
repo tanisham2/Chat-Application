@@ -14,6 +14,32 @@
     max-width: 1200px;
     margin: 0 auto;
   }
+  #typing-indicator {
+    color: #666;
+    font-style: italic;
+    font-size: 0.9em;
+    padding: 5px 10px;
+    display: none;
+   }
+  .typing {
+    color: #666;
+    font-size: 0.8em;
+    font-style: italic;
+   }
+   #user-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+   }
+   #user-list li {
+    padding: 5px 10px;
+    border-radius: 3px;
+    margin: 2px 0;
+   }
+
+   #user-list li:hover {
+    background-color: #f0f0f0;
+   }
   #sidebar {
     width: 250px;
     padding: 20px;
@@ -121,11 +147,18 @@
             <input type="text" id="new-room" placeholder="New room name" />
             <button id="create-room-btn">Create Room</button>
         </div>
+
+        <h3>Users in Room</h3>
+        <ul id="user-list">
+     <!-- User list will be populated here -->
+        </ul>
     </div>
     <div id="chat-area">
+      <div id="typing-indicator"></div>
         <ul id="messages"></ul>
+
         <form id="form">
-            <input id="input" autocomplete="off" />
+            <input id="input" autocomplete="off" placeholder="Type a message..."/>
             <button>Send</button>
         </form>
       </div>
@@ -147,6 +180,11 @@
     const setUsernameBtn = document.getElementById('set-username');
     let currentUsername = 'Anonymous';
 
+  const userList = document.getElementById('user-list');
+   const typingIndicator = document.getElementById('typing-indicator');
+   const messageInput = document.getElementById('input');
+   let typingTimeout;
+
     setUsernameBtn.addEventListener('click', () => {
         const newUsername = usernameInput.value.trim();
         if (newUsername) {
@@ -156,17 +194,23 @@
         }
     });
 
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const message = input.value.trim();
-        if (message) {
-            socket.emit('chat message', {
-                message: message,
-                room: currentRoom
-            });
-        }
-        input.value = '';
-    });
+   form.addEventListener('submit', (e) => {
+     e.preventDefault();
+     if (messageInput.value.trim()) {
+         socket.emit('chat message', {
+            message: messageInput.value,
+            room: currentRoom
+         });
+         messageInput.value = '';
+        
+         // Clear typing status
+         if (typingTimeout) {
+            clearTimeout(typingTimeout);
+            typingTimeout = null;
+            socket.emit('typing', false);
+         }
+     }
+   });
 
     roomList.addEventListener('click', (e) => {
         if (e.target.classList.contains('room')) {
@@ -186,6 +230,23 @@
             newRoomInput.value = '';
         }
     });
+
+       // Handle typing events
+   messageInput.addEventListener('input', () => {
+     // User is typing
+     if (!typingTimeout) {
+         socket.emit('typing', true);
+     }
+    
+     // Clear previous timeout
+     clearTimeout(typingTimeout);
+    
+     // Set a timeout to indicate user stopped typing
+     typingTimeout = setTimeout(() => {
+         socket.emit('typing', false);
+         typingTimeout = null;
+     }, 1000);
+   });
         
     // Update message display to show usernames
     socket.on('chat message', (data) => {
@@ -244,6 +305,32 @@
         messages.appendChild(item);
         messages.scrollTop = messages.scrollHeight;
     });
+
+     // Update user list
+   socket.on('user list', (data) => {
+     if (data.room === currentRoom) {
+         userList.innerHTML = '';
+         data.users.forEach(user => {
+            const userItem = document.createElement('li');
+            userItem.textContent = user.username;
+            if (user.isTyping) {
+               userItem.innerHTML += ' <span class="typing">typing...</span>';
+            }
+            userList.appendChild(userItem);
+         });
+     }
+   });
+
+   // Update typing indicator
+   socket.on('typing users', (usernames) => {
+     const typingUsers = usernames.filter(u => u !== currentUsername);
+     if (typingUsers.length > 0) {
+         typingIndicator.textContent = `${typingUsers.join(', ')} ${typingUsers.length > 1 ? 'are' : 'is'} typing...`;
+         typingIndicator.style.display = 'block';
+     } else {
+         typingIndicator.style.display = 'none';
+     }
+   });
     </script>
 </body>
 </html>

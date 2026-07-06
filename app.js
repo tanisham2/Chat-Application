@@ -8,6 +8,9 @@ const server = http.createServer(app);
 const io = new Server(server);
 const rooms = new Set(['general', 'random']);
 
+const usersInRooms = new Map();
+const typingUsers = new Map();
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -20,7 +23,7 @@ io.on('connection', (socket) => {
 
   // Store username with socket
   socket.username = 'Anonymous';
-  
+
   // Handle username change
   socket.on('set username', (username) => {
     const oldUsername = socket.username;
@@ -51,7 +54,23 @@ socket.on('join room', (room) => {
       message: `${socket.username} has joined the room`,
       timestamp: new Date().toISOString()
     });
-  });
+
+       // Initialize user data for the room
+     if (!usersInRooms.has(room)) {
+         usersInRooms.set(room, new Map());
+         typingUsers.set(room, new Set());
+     }
+
+     // Add user to room
+     usersInRooms.get(room).set(socket.id, {
+         username: socket.username,
+         id: socket.id
+     });
+    
+     // Send updated user list to room
+     updateUserList(room);
+   });
+
 
   // Handle room creation
   socket.on('create room', (roomName) => {
@@ -72,13 +91,47 @@ socket.on('join room', (room) => {
       room: room
     });
   });
-
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log('A user disconnected');
-    io.emit('user left', { username: socket.username });
+    
+    // Handle typing status
+   socket.on('typing', (isTyping) => {
+     const room = Array.from(socket.rooms).find(r => r !== socket.id);
+     if (!room) return;
+    
+     if (isTyping) {
+         typingUsers.get(room).add(socket.username);
+     } 
+     else {
+         typingUsers.get(room).delete(socket.username);
+     }
+    
+     // Notify room about typing users
+     io.to(room).emit('typing users', Array.from(typingUsers.get(room)));
   });
+
+   // Handle disconnection
+   socket.on('disconnect', () => {
+     // Remove from all rooms
+     Array.from(usersInRooms.entries()).forEach(([room, users]) => {
+         if (users.has(socket.id)) {
+            users.delete(socket.id);
+            typingUsers.get(room)?.delete(socket.username);
+                updateUserList(room);
+            }
+        });
+    });
 });
+
+      // Helper function to update user list for a room
+   function updateUserList(room) {
+     const users = Array.from(usersInRooms.get(room)?.values() || []);
+     io.to(room).emit('user list', {
+         room: room,
+         users: users.map(u => ({
+            username: u.username,
+            isTyping: typingUsers.get(room)?.has(u.username) || false
+         }))
+     });
+   }
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
