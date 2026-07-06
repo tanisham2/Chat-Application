@@ -12,7 +12,8 @@ module.exports = (io) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.userId = decoded.id;
       next();
-    } catch (err) {
+    } 
+    catch (err) {
       next(new Error('Authentication error'));
     }
   });
@@ -32,14 +33,20 @@ module.exports = (io) => {
           message: message || '',
           image: image || ''
         });
+        
         io.to(receiverId).to(socket.userId).emit('private message', newMessage);
-      } catch (err) {
+      } 
+      catch (err) {
         socket.emit('error message', 'Failed to send message');
       }
     });
 
     socket.on('typing', ({ receiverId, isTyping }) => {
       io.to(receiverId).emit('typing', { senderId: socket.userId, isTyping });
+    });
+
+    socket.on('edit message', ({ messageId, receiverId, message }) => {
+      io.to(receiverId).to(socket.userId).emit('message edited', { messageId, message });
     });
 
     socket.on('disconnect', async () => {

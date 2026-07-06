@@ -38,3 +38,27 @@ exports.uploadImage = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   res.json({ imageUrl: `/uploads/${req.file.filename}` });
 };
+
+exports.editMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { message } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message cannot be empty' });
+    }
+    const existing = await Message.findById(messageId);
+    if (!existing) return res.status(404).json({ error: 'Message not found' });
+    if (existing.sender.toString() !== req.userId) {
+      return res.status(403).json({ error: 'You can only edit your own messages' });
+    }
+    if (existing.isDeleted) {
+      return res.status(400).json({ error: 'Cannot edit a deleted message' });
+    }
+    existing.message = message.trim();
+    existing.isEdited = true;
+    await existing.save();
+    res.json(existing);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error editing message' });
+  }
+};

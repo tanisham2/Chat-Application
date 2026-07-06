@@ -18,7 +18,12 @@ const searchInput = document.getElementById('search-input');
 const typingIndicator = document.getElementById('typing-indicator');
 const imageInput = document.getElementById('image-input');
 
-let activeUser = null; // { _id, username, isOnline }
+const profileBtn = document.getElementById('profile-btn');
+const profileModal = document.getElementById('profile-modal');
+const profileUsernameInput = document.getElementById('profile-username');
+const profileAvatarInput = document.getElementById('profile-avatar');
+
+let activeUser = null;      //{_id, username, isOnline}
 let allUsers = [];
 let typingTimeout;
 
@@ -80,14 +85,34 @@ function renderMessage(msg) {
   li.dataset.id = msg._id;
 
   let content = '';
-  if (msg.message) content += `<div>${escapeHtml(msg.message)}</div>`;
+  if (msg.message) {
+    content += `<div class="msg-text">${escapeHtml(msg.message)}</div>`;
+  }
   if (msg.image) content += `<img src="${msg.image}" />`;
-  content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}</span>`;
+  content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}</span>`;
   if (isOwn && !msg.isDeleted) {
     content += `<span class="delete-btn" data-id="${msg._id}">Delete</span>`;
+    if (msg.message && !msg.image) {
+      content += ` <span class="edit-btn" data-id="${msg._id}">Edit</span>`;
+    }
   }
   li.innerHTML = content;
   messagesEl.appendChild(li);
+}
+
+function renderMessageInPlace(msg, li) {
+  const isOwn = msg.sender === currentUser.id || msg.sender?._id === currentUser.id;
+  li.className = isOwn ? 'own' : 'other';
+  li.dataset.id = msg._id;
+  let content = '';
+  if (msg.message) content += `<div class="msg-text">${escapeHtml(msg.message)}</div>`;
+  if (msg.image) content += `<img src="${msg.image}" />`;
+  content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}</span>`;
+  if (isOwn && !msg.isDeleted) {
+    content += `<span class="delete-btn" data-id="${msg._id}">Delete</span>`;
+    if (msg.message && !msg.image) content += ` <span class="edit-btn" data-id="${msg._id}">Edit</span>`;
+  }
+  li.innerHTML = content;
 }
 
 function escapeHtml(text) {
@@ -95,6 +120,34 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+messagesEl.addEventListener('click', async (e) => {
+  if (e.target.classList.contains('edit-btn')) {
+    const id = e.target.dataset.id;
+    const li = e.target.closest('li');
+    const textDiv = li.querySelector('.msg-text');
+    const oldText = textDiv.textContent;
+
+    li.innerHTML = `
+      <input type="text" class="edit-input" value="${oldText.replace(/"/g, '&quot;')}" />
+      <button class="edit-save-btn" data-id="${id}">Save</button>
+    `;
+    li.querySelector('.edit-save-btn').addEventListener('click', async () => {
+      const newText = li.querySelector('.edit-input').value.trim();
+      if (!newText) return;
+      const updated = await apiCall(`/api/messages/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ message: newText })
+      });
+      if (updated.error) { alert(updated.error); return; }
+      socket.emit('edit message', { messageId: id, receiverId: activeUser._id, message: newText });
+      li.outerHTML = '';
+      const newLi = document.createElement('li');
+      messagesEl.appendChild(newLi);
+      renderMessageInPlace(updated, newLi);
+    });
+  }
+});
 
 messagesEl.addEventListener('click', async (e) => {
   if (e.target.classList.contains('delete-btn')) {
@@ -116,10 +169,16 @@ form.addEventListener('submit', async (e) => {
     formData.append('image', imageInput.files[0]);
     const res = await fetch('/api/messages/upload', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { 
+        Authorization: `Bearer ${token}` 
+      },
       body: formData
     });
     const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Image upload failed');
+      return;
+    }
     imageUrl = data.imageUrl;
     imageInput.value = '';
   }
@@ -151,6 +210,18 @@ socket.on('private message', (msg) => {
   }
 });
 
+socket.on('message edited', ({ messageId, message }) => {
+  const li = messagesEl.querySelector(`li[data-id="${messageId}"]`);
+  if (li) {
+    const textDiv = li.querySelector('.msg-text');
+    if (textDiv) textDiv.textContent = message;
+    const meta = li.querySelector('.meta');
+    if (meta && !meta.textContent.includes('(edited)')) {
+      meta.textContent += ' (edited)';
+    }
+  }
+});
+
 socket.on('typing', ({ senderId, isTyping }) => {
   if (activeUser && senderId === activeUser._id) {
     typingIndicator.textContent = isTyping ? `${activeUser.username} is typing...` : '';
@@ -168,6 +239,33 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   await apiCall('/api/auth/logout', { method: 'POST' });
   localStorage.clear();
   window.location.href = '/login.html';
+});
+
+
+profileBtn.addEventListener('click', async () => {
+  const profile = await apiCall('/api/users/profile');
+  profileUsernameInput.value = profile.username;
+  profileAvatarInput.value = profile.avatar || '';
+  profileModal.classList.remove('hidden');
+});
+
+document.getElementById('profile-close-btn').addEventListener('click', () => {
+  profileModal.classList.add('hidden');
+});
+
+document.getElementById('profile-save-btn').addEventListener('click', async () => {
+  const updated = await apiCall('/api/users/profile', {
+    method: 'PUT',
+    body: JSON.stringify({
+      username: profileUsernameInput.value.trim(),
+      avatar: profileAvatarInput.value.trim()
+    })
+  });
+  currentUser.username = updated.username;
+  currentUser.avatar = updated.avatar;
+  localStorage.setItem('user', JSON.stringify(currentUser));
+  document.getElementById('my-username').textContent = updated.username;
+  profileModal.classList.add('hidden');
 });
 
 loadUsers();
