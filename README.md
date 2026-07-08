@@ -8,14 +8,14 @@ Chat Application is a full-stack real-time messaging platform that enables users
 * JWT Authentication
 * Password Encryption using bcrypt
 * User Profile Management
-* View All Users
+* View all users
 * Search Users
-* One-to-One Chat
+* One-to-One chat
 * Real-Time Messaging with Socket.IO
 * Online/Offline Status
-* Message Timestamps
-* Delete Own Messages
-* Image Upload Support
+* Message timestamps
+* Delete and Edit own messages
+* Image upload 
 
 ## Tech Stack
 
@@ -63,4 +63,3 @@ npm start
 * Push Notifications
 * Message Reactions
 * Chat Encryption
-* Message Editing
