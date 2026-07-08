@@ -18,7 +18,8 @@ document.getElementById('register-btn').addEventListener('click', async () => {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     window.location.href = '/index.html';
-  } catch (err) {
+  } 
+  catch (err) {
     errorMsg.textContent = 'Server error. Try again.';
   }
 });

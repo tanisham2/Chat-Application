@@ -30,8 +30,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-//error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, next) => {                      //error handling middleware
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong' });
 });
