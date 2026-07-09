@@ -32,13 +32,14 @@ module.exports = (io) => {
       isOnline: true 
     });
 
-    socket.on('private message', async ({ receiverId, message, image }) => {
+    socket.on('private message', async ({ receiverId, message, image, audio }) => {
       try {
         const newMessage = await Message.create({
           sender: socket.userId,
           receiver: receiverId,
           message: message || '',
-          image: image || ''
+          image: image || '',
+          audio: audio || ''
         });
         
         io.to(receiverId).to(socket.userId).emit('private message', newMessage);

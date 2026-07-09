@@ -277,4 +277,39 @@ body {
   color: #1a0bf3; 
   cursor: pointer; 
 }
+
+#emoji-btn, #voice-btn {
+  background: none;
+  font-size: 1.3em;
+  padding: 6px 10px;
+  border: none;
+  cursor: pointer;
+}
+#voice-btn.recording {
+  animation: pulse 1s infinite;
+  color: red;
+}
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+.voice-message { margin: 6px 0; }
+.voice-audio { width: 220px; }
+.speed-controls { display: flex; gap: 6px; margin-top: 4px; }
+.speed-btn {
+  font-size: 0.7em;
+  padding: 2px 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #1a0bf3;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.speed-btn.active {
+  background: #1a0bf3;
+  color: #fff;
+  border-color: #1a0bf3;
+}
 }

@@ -23,6 +23,14 @@ const profileModal = document.getElementById('profile-modal');
 const profileUsernameInput = document.getElementById('profile-username');
 const profileAvatarInput = document.getElementById('profile-avatar');
 
+const emojiBtn = document.getElementById('emoji-btn');
+const emojiPicker = new EmojiButton({ position: 'top-start' });
+
+const voiceBtn = document.getElementById('voice-btn');
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+
 let activeUser = null;      //{_id, username, isOnline}
 let allUsers = [];
 let typingTimeout;
@@ -89,6 +97,18 @@ function renderMessage(msg) {
     content += `<div class="msg-text">${escapeHtml(msg.message)}</div>`;
   }
   if (msg.image) content += `<img src="${msg.image}" />`;
+    if (msg.audio) {
+    content += `
+      <div class="voice-message">
+        <audio class="voice-audio" src="${msg.audio}" controls></audio>
+        <div class="speed-controls">
+          <button type="button" class="speed-btn active" data-speed="1">1x</button>
+          <button type="button" class="speed-btn" data-speed="1.5">1.5x</button>
+          <button type="button" class="speed-btn" data-speed="2">2x</button>
+        </div>
+      </div>`;
+  }
+
   content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}</span>`;
   if (isOwn && !msg.isDeleted) {
     content += `<span class="delete-btn" data-id="${msg._id}">Delete</span>`;
@@ -158,6 +178,16 @@ messagesEl.addEventListener('click', async (e) => {
   }
 });
 
+messagesEl.addEventListener('click', (e) => {
+  if (e.target.classList.contains('speed-btn')) {
+    const speed = parseFloat(e.target.dataset.speed);
+    const audioEl = e.target.closest('.voice-message').querySelector('audio');
+    audioEl.playbackRate = speed;
+    e.target.parentElement.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+  }
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!activeUser) return;
@@ -189,6 +219,62 @@ form.addEventListener('submit', async (e) => {
   input.value = '';
   socket.emit('typing', { receiverId: activeUser._id, isTyping: false });
 });
+
+emojiPicker.on('emoji', selection => {
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  const text = input.value;
+  input.value = text.slice(0, start) + selection.emoji + text.slice(end);
+  input.focus();
+  input.selectionStart = input.selectionEnd = start + selection.emoji.length;
+});
+
+emojiBtn.addEventListener('click', () => emojiPicker.togglePicker(emojiBtn));
+
+
+voiceBtn.addEventListener('click', async () => {
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        stream.getTracks().forEach(track => track.stop());
+        await sendVoiceMessage(audioBlob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      voiceBtn.textContent = '⏹️';
+      voiceBtn.classList.add('recording');
+    } catch (err) {
+      alert('Microphone access denied or unavailable');
+    }
+  } else {
+    mediaRecorder.stop();
+    isRecording = false;
+    voiceBtn.textContent = '🎤';
+    voiceBtn.classList.remove('recording');
+  }
+});
+
+async function sendVoiceMessage(audioBlob) {
+  if (!activeUser) return;
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'voice-message.webm');
+  const res = await fetch('/api/messages/upload-audio', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    alert(data.error || 'Voice message upload failed');
+    return;
+  }
+  socket.emit('private message', { receiverId: activeUser._id, message: '', image: '', audio: data.audioUrl });
+}
 
 input.addEventListener('input', () => {
   if (!activeUser) return;

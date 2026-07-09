@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const protect = require('../middleware/authMiddleware');
-const { getConversation, deleteMessage, uploadImage, editMessage } = require('../controllers/messageController');                         
+const { getConversation, deleteMessage, uploadImage, editMessage, uploadAudio } = require('../controllers/messageController');                         
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => 
@@ -17,6 +17,7 @@ router.get('/:userId', protect, getConversation);
 router.delete('/:messageId', protect, deleteMessage);
 router.post('/upload', protect, upload.single('image'), uploadImage);
 router.put('/:messageId', protect, editMessage);
+router.post('/upload-audio', protect, upload.single('audio'), uploadAudio);
 
 
 module.exports = router;

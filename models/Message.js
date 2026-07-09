@@ -19,6 +19,10 @@ const messageSchema = new mongoose.Schema({
     type: String, 
     default: '' 
   },
+  audio: { 
+    type: String, 
+    default: '' 
+  },
   isDeleted: { 
     type: Boolean, 
     default: false 

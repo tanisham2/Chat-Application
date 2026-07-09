@@ -50,7 +50,16 @@ exports.uploadImage = async (req, res) => {
   if (!req.file) return res.status(400).json({ 
     error: 'No file uploaded' 
   });
-  res.json({ imageUrl: `/uploads/${req.file.filename}` });
+  res.json({ imageUrl: `/uploads/${req.file.filename}` 
+  });
+};
+
+exports.uploadAudio = async (req, res) => {
+  if (!req.file) return res.status(400).json({ 
+    error: 'No audio file uploaded' 
+  });
+  res.json({ audioUrl: `/uploads/${req.file.filename}` 
+  });
 };
 
 exports.editMessage = async (req, res) => {
