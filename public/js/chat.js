@@ -23,14 +23,6 @@ const profileModal = document.getElementById('profile-modal');
 const profileUsernameInput = document.getElementById('profile-username');
 const profileAvatarInput = document.getElementById('profile-avatar');
 
-const emojiBtn = document.getElementById('emoji-btn');
-const emojiPicker = new EmojiButton({ position: 'top-start' });
-
-const voiceBtn = document.getElementById('voice-btn');
-let mediaRecorder;
-let audioChunks = [];
-let isRecording = false;
-
 let activeUser = null;      //{_id, username, isOnline}
 let allUsers = [];
 let typingTimeout;
@@ -220,17 +212,35 @@ form.addEventListener('submit', async (e) => {
   socket.emit('typing', { receiverId: activeUser._id, isTyping: false });
 });
 
-emojiPicker.on('emoji', selection => {
+const emojiBtn = document.getElementById('emoji-btn');
+const emojiPicker = document.getElementById('emoji-picker');
+
+emojiBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  emojiPicker.classList.toggle('hidden');
+});
+
+emojiPicker.addEventListener('emoji-click', (event) => {
+  const emoji = event.detail.unicode;
   const start = input.selectionStart;
   const end = input.selectionEnd;
   const text = input.value;
-  input.value = text.slice(0, start) + selection.emoji + text.slice(end);
+  input.value = text.slice(0, start) + emoji + text.slice(end);
   input.focus();
-  input.selectionStart = input.selectionEnd = start + selection.emoji.length;
+  input.selectionStart = input.selectionEnd = start + emoji.length;
+  emojiPicker.classList.add('hidden');
 });
 
-emojiBtn.addEventListener('click', () => emojiPicker.togglePicker(emojiBtn));
+document.addEventListener('click', (e) => {
+  if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+    emojiPicker.classList.add('hidden');
+  }
+});
 
+const voiceBtn = document.getElementById('voice-btn');
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
 
 voiceBtn.addEventListener('click', async () => {
   if (!isRecording) {

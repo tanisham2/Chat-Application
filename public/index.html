@@ -24,6 +24,7 @@
         <label id="image-label" for="image-input">📷</label>
         <input type="file" id="image-input" accept="image/*" />
         <button type="button" id="emoji-btn">😊</button>
+        <emoji-picker id="emoji-picker" class="hidden"></emoji-picker>
         <input id="input" autocomplete="off" placeholder="Type a message..." />
         <button type="button" id="voice-btn">🎤</button>
         <button type="submit">Send</button>
@@ -44,7 +45,7 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4/dist/index.min.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
   <script src="/js/chat.js"></script>
 </body>
 </html>

@@ -312,4 +312,12 @@ body {
   color: #fff;
   border-color: #1a0bf3;
 }
+emoji-picker {
+  position: absolute;
+  bottom: 60px;
+  z-index: 999;
+}
+emoji-picker.hidden {
+  display: none;
+}
 }
