@@ -76,20 +76,30 @@ async function selectUser(user) {
   messagesEl.innerHTML = '';
   messages.forEach(renderMessage);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+  loadPinnedMessages();
 }
+
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🥰'];
 
 function renderMessage(msg) {
   const li = document.createElement('li');
   const isOwn = msg.sender === currentUser.id || msg.sender?._id === currentUser.id;
   li.className = isOwn ? 'own' : 'other';
   li.dataset.id = msg._id;
+  li.dataset.raw = JSON.stringify(msg);
 
   let content = '';
-  if (msg.message) {
-    content += `<div class="msg-text">${escapeHtml(msg.message)}</div>`;
+
+  if (msg.forwardedFrom) {
+    content += `<div class="forwarded-label">↪ Forwarded</div>`;
   }
+  if (msg.replyTo) {
+    const replyText = msg.replyTo.message || (msg.replyTo.image ? '📷 Image' : (msg.replyTo.audio ? '🎤 Voice message' : ''));
+    content += `<div class="reply-quote">${escapeHtml(replyText)}</div>`;
+  }
+  if (msg.message) content += `<div class="msg-text">${escapeHtml(msg.message)}</div>`;
   if (msg.image) content += `<img src="${msg.image}" />`;
-    if (msg.audio) {
+  if (msg.audio) {
     content += `
       <div class="voice-message">
         <audio class="voice-audio" src="${msg.audio}" controls></audio>
@@ -101,13 +111,31 @@ function renderMessage(msg) {
       </div>`;
   }
 
-  content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}</span>`;
+  content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}${msg.isPinned ? ' 📌' : ''}</span>`;
+
+  if (msg.reactions && msg.reactions.length > 0) {
+    const counts = {};
+    msg.reactions.forEach(r => { counts[r.emoji] = (counts[r.emoji] || 0) + 1; });
+    content += `<div class="reaction-summary">`;
+    Object.keys(counts).forEach(emoji => {
+      content += `<span class="reaction-pill">${emoji} ${counts[emoji]}</span>`;
+    });
+    content += `</div>`;
+  }
+
+  content += `<div class="msg-actions">`;
+  content += `<span class="react-btn" data-id="${msg._id}">😊</span>`;
+  content += `<span class="reply-btn" data-id="${msg._id}">Reply</span>`;
+  content += `<span class="forward-btn" data-id="${msg._id}">Forward</span>`;
+  content += `<span class="pin-btn" data-id="${msg._id}">${msg.isPinned ? 'Unpin' : 'Pin'}</span>`;
   if (isOwn && !msg.isDeleted) {
     content += `<span class="delete-btn" data-id="${msg._id}">Delete</span>`;
-    if (msg.message && !msg.image) {
-      content += ` <span class="edit-btn" data-id="${msg._id}">Edit</span>`;
+    if (msg.message && !msg.image && !msg.audio) {
+      content += `<span class="edit-btn" data-id="${msg._id}">Edit</span>`;
     }
   }
+  content += `</div>`;
+
   li.innerHTML = content;
   messagesEl.appendChild(li);
 }
@@ -180,6 +208,184 @@ messagesEl.addEventListener('click', (e) => {
   }
 });
 
+messagesEl.addEventListener('click', (e) => {
+  if (e.target.classList.contains('react-btn')) {
+    showReactionPicker(e.target, e.target.dataset.id);
+  }
+});
+
+function showReactionPicker(anchor, messageId) {
+  const old = document.getElementById('reaction-picker');
+  if (old) old.remove();
+
+  const picker = document.createElement('div');
+  picker.id = 'reaction-picker';
+  picker.className = 'reaction-picker';
+  REACTION_EMOJIS.forEach(emoji => {
+    const span = document.createElement('span');
+    span.textContent = emoji;
+    span.addEventListener('click', async () => {
+      const updated = await apiCall(`/api/messages/${messageId}/react`, {
+        method: 'POST',
+        body: JSON.stringify({ emoji })
+      });
+      if (updated.error) { 
+        alert(updated.error); 
+        return; 
+      }
+      socket.emit('react message', { 
+        messageId, receiverId: activeUser._id, reactions: updated.reactions 
+      });
+      updateReactionsInDOM(messageId, updated.reactions);
+      picker.remove();
+    });
+    picker.appendChild(span);
+  });
+  document.body.appendChild(picker);
+  const rect = anchor.getBoundingClientRect();
+  picker.style.top = `${rect.top + window.scrollY - 40}px`;
+  picker.style.left = `${rect.left + window.scrollX}px`;
+
+  setTimeout(() => {
+    document.addEventListener('click', function closePicker(ev) {
+      if (!picker.contains(ev.target) && ev.target !== anchor) {
+        picker.remove();
+        document.removeEventListener('click', closePicker);
+      }
+    });
+  }, 0);
+}
+
+function updateReactionsInDOM(messageId, reactions) {
+  const li = messagesEl.querySelector(`li[data-id="${messageId}"]`);
+  if (!li) return;
+  const existing = li.querySelector('.reaction-summary');
+  if (existing) existing.remove();
+
+  if (reactions.length > 0) {
+    const counts = {};
+    reactions.forEach(r => { 
+      counts[r.emoji] = (counts[r.emoji] || 0) + 1; 
+    });
+    const div = document.createElement('div');
+    div.className = 'reaction-summary';
+    Object.keys(counts).forEach(emoji => {
+      div.innerHTML += `<span class="reaction-pill">${emoji} ${counts[emoji]}</span>`;
+    });
+    li.querySelector('.meta').insertAdjacentElement('afterend', div);
+  }
+}
+
+socket.on('message reacted', ({ messageId, reactions }) => {
+  updateReactionsInDOM(messageId, reactions);
+});
+
+const replyPreview = document.getElementById('reply-preview');
+const replyPreviewText = document.getElementById('reply-preview-text');
+const replyCancelBtn = document.getElementById('reply-cancel-btn');
+let replyingTo = null;
+
+messagesEl.addEventListener('click', (e) => {
+  if (e.target.classList.contains('reply-btn')) {
+    const li = e.target.closest('li');
+    const msg = JSON.parse(li.dataset.raw);
+    replyingTo = e.target.dataset.id;
+    const preview = msg.message || (msg.image ? '📷 Image' : (msg.audio ? '🎤 Voice message' : ''));
+    replyPreviewText.textContent = `Replying to: ${preview}`;
+    replyPreview.classList.remove('hidden');
+    input.focus();
+  }
+});
+
+replyCancelBtn.addEventListener('click', () => {
+  replyingTo = null;
+  replyPreview.classList.add('hidden');
+});
+
+const forwardModal = document.getElementById('forward-modal');
+const forwardUserList = document.getElementById('forward-user-list');
+
+messagesEl.addEventListener('click', (e) => {
+  if (e.target.classList.contains('forward-btn')) {
+    const li = e.target.closest('li');
+    const msg = JSON.parse(li.dataset.raw);
+    forwardUserList.innerHTML = '';
+
+    allUsers.forEach(user => {
+      const item = document.createElement('li');
+      item.textContent = user.username;
+      item.addEventListener('click', () => {
+        socket.emit('private message', {
+          receiverId: user._id,
+          message: msg.message || '',
+          image: msg.image || '',
+          audio: msg.audio || '',
+          forwardedFrom: msg.sender?._id || msg.sender
+        });
+        forwardModal.classList.add('hidden');
+      });
+      forwardUserList.appendChild(item);
+    });
+    forwardModal.classList.remove('hidden');
+  }
+});
+
+document.getElementById('forward-close-btn').addEventListener('click', () => {
+  forwardModal.classList.add('hidden');
+});
+
+messagesEl.addEventListener('click', async (e) => {
+  if (e.target.classList.contains('pin-btn')) {
+    const id = e.target.dataset.id;
+    const updated = await apiCall(`/api/messages/${id}/pin`, { 
+      method: 'PUT' 
+    });
+
+    if (updated.error) { alert(updated.error); return; }
+    socket.emit('pin message', { 
+      messageId: id, receiverId: activeUser._id, isPinned: updated.isPinned 
+    });
+    e.target.textContent = updated.isPinned ? 'Unpin' : 'Pin';
+    loadPinnedMessages();
+  }
+});
+
+async function loadPinnedMessages() {
+  if (!activeUser) return;
+  const pinned = await apiCall(`/api/messages/${activeUser._id}/pinned`);
+  const pinnedBar = document.getElementById('pinned-bar');
+  if (!pinned || pinned.length === 0) {
+    pinnedBar.classList.add('hidden');
+    pinnedBar.innerHTML = '';
+    return;
+  }
+  pinnedBar.classList.remove('hidden');
+  pinnedBar.innerHTML = pinned.map(m => `📌 ${escapeHtml(m.message || 
+    (m.image ? 'Image' : 'Voice message'))}`).join(' &nbsp;|&nbsp; ');
+}
+
+socket.on('message pinned', ({ messageId, isPinned }) => {
+  const li = messagesEl.querySelector(`li[data-id="${messageId}"]`);
+  if (li) {
+    const pinBtn = li.querySelector('.pin-btn');
+    if (pinBtn) pinBtn.textContent = isPinned ? 'Unpin' : 'Pin';
+  }
+  loadPinnedMessages();
+});
+
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+function applyTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+applyTheme(localStorage.getItem('theme') || 'light');
+
+themeToggleBtn.addEventListener('click', () => {
+  const current = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', current);
+  applyTheme(current);
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!activeUser) return;
@@ -207,8 +413,12 @@ form.addEventListener('submit', async (e) => {
 
   if (!text && !imageUrl) return;
 
-  socket.emit('private message', { receiverId: activeUser._id, message: text, image: imageUrl });
+  socket.emit('private message', { 
+    receiverId: activeUser._id, message: text, image: imageUrl, replyTo: replyingTo 
+  });
   input.value = '';
+  replyingTo = null;
+  replyPreview.classList.add('hidden');
   socket.emit('typing', { receiverId: activeUser._id, isTyping: false });
 });
 

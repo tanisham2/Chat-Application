@@ -31,6 +31,26 @@ const messageSchema = new mongoose.Schema({
     type: Boolean, 
     default: false 
   },
+  isPinned: {
+    type: Boolean,
+    default: false
+  },
+  replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+    default: null
+  },
+  forwardedFrom: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+    default: null
+  },
+  reactions: [
+    {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      emoji: { type: String }
+    }
+  ],
   timestamp: { 
     type: Date, 
     default: Date.now 
