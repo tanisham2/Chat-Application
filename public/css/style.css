@@ -174,6 +174,7 @@ body {
   display: flex; 
   margin-top: 10px; 
   gap: 8px; 
+  position: relative;
 }
 #input { 
   flex: 1; 
@@ -210,6 +211,7 @@ body {
   #messages li { 
     max-width: 90%; 
   }
+}
 
 .modal-overlay {
   position: fixed; 
@@ -314,10 +316,14 @@ body {
 }
 emoji-picker {
   position: absolute;
-  bottom: 60px;
+  bottom: 55px;
+  left: 0;
   z-index: 999;
+  width: 320px;
+  height: 400px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
 emoji-picker.hidden {
-  display: none;
-}
+  display: none !important;
 }
