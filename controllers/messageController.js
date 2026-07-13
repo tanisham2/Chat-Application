@@ -112,7 +112,9 @@ exports.getPinnedMessages = async (req, res) => {
     res.json(messages);
   } 
   catch (err) {
-    res.status(500).json({ error: 'Server error fetching pinned messages' });
+    res.status(500).json({ 
+      error: 'Server error fetching pinned messages' 
+    });
   }
 };
 
@@ -120,7 +122,9 @@ exports.togglePin = async (req, res) => {
   try {
     const { messageId } = req.params;
     const message = await Message.findById(messageId);
-    if (!message) return res.status(404).json({ error: 'Message not found' });
+    if (!message) return res.status(404).json({ 
+      error: 'Message not found' 
+    });
     if (message.sender.toString() !== req.userId && message.receiver.toString() !== req.userId) {
       return res.status(403).json({ 
         error: 'Not authorized' 
@@ -131,7 +135,9 @@ exports.togglePin = async (req, res) => {
     res.json(message);
   } 
   catch (err) {
-    res.status(500).json({ error: 'Server error pinning message' });
+    res.status(500).json({ 
+      error: 'Server error pinning message' 
+    });
   }
 };
 
