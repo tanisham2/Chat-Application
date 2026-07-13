@@ -23,6 +23,13 @@ const profileModal = document.getElementById('profile-modal');
 const profileUsernameInput = document.getElementById('profile-username');
 const profileAvatarInput = document.getElementById('profile-avatar');
 
+const searchResultsEl = document.getElementById('search-results');
+const pendingToggle = document.getElementById('pending-requests-toggle');
+const pendingCount = document.getElementById('pending-count');
+const pendingPanel = document.getElementById('pending-panel');
+const pendingPanelClose = document.getElementById('pending-panel-close');
+const pendingListEl = document.getElementById('pending-list');
+
 let activeUser = null;      //{_id, username, isOnline}
 let allUsers = [];
 let typingTimeout;
@@ -41,31 +48,175 @@ async function apiCall(url, options = {}) {
     window.location.href = '/login.html';
     return;
   }
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) return { 
+    error: data.error || 'Request failed' };
+  return data;
 }
 
-function renderUserList(users) {
+let friendsList = [];
+let unreadCounts = {}; // userId -> count
+let friendStatuses = { friends: [], sent: [], received: [] };
+
+function timeAgo(date) {
+  const diff = Math.floor((Date.now() - new Date(date)) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return new Date(date).toLocaleDateString();
+}
+
+function renderFriendsList() {
   userListEl.innerHTML = '';
-  users.forEach(user => {
+  friendsList.forEach(user => {
     const li = document.createElement('li');
     li.dataset.id = user._id;
-    li.innerHTML = `<span>${user.username}</span><span class="status-dot ${user.isOnline ? 'online' : ''}"></span>`;
+    const unread = unreadCounts[user._id] || 0;
+    li.innerHTML = `
+      <div class="friend-info">
+        <span>${escapeHtml(user.username)}</span>
+        <span class="friend-lastseen">${user.isOnline ? 'Online' : `Last seen ${timeAgo(user.lastSeen)}`}</span>
+      </div>
+      <div>
+        <span class="status-dot ${user.isOnline ? 'online' : ''}"></span>
+        ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
+      </div>`;
     if (activeUser && activeUser._id === user._id) li.classList.add('active');
-    li.addEventListener('click', () => selectUser(user));
+    li.addEventListener('click', () => {
+      unreadCounts[user._id] = 0;
+      selectUser(user);
+    });
     userListEl.appendChild(li);
   });
 }
 
-async function loadUsers() {
-  allUsers = await apiCall('/api/users');
-  renderUserList(allUsers);
+async function loadFriends() {
+  friendsList = await apiCall('/api/friends');
+  renderFriendsList();
+}
+
+async function loadFriendStatuses() {
+  friendStatuses = await apiCall('/api/friends/statuses');
+}
+
+function getRelationshipButton(user) {
+  if (friendStatuses.friends.includes(user._id)) {
+    return `<button class="friend-action-btn friends" disabled>Friends ✓</button>`;
+  }
+  const sent = friendStatuses.sent.find(s => s.userId === user._id);
+  if (sent) {
+    return `<button class="friend-action-btn sent" disabled>Request Sent</button>`;
+  }
+  const received = friendStatuses.received.find(r => r.userId === user._id);
+  if (received) {
+    return `<button class="friend-action-btn accept" data-request-id="${received.requestId}" data-accept-user="${user._id}">Accept Request</button>`;
+  }
+  return `<button class="friend-action-btn add" data-add-user="${user._id}">+ Add Friend</button>`;
+}
+
+function renderSearchResults(users) {
+  searchResultsEl.innerHTML = '';
+  searchResultsEl.classList.remove('hidden');
+  users.forEach(user => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${escapeHtml(user.username)}</span>${getRelationshipButton(user)}`;
+    searchResultsEl.appendChild(li);
+  });
 }
 
 searchInput.addEventListener('input', async () => {
   const q = searchInput.value.trim();
-  if (!q) return renderUserList(allUsers);
+  if (!q) {
+    searchResultsEl.classList.add('hidden');
+    searchResultsEl.innerHTML = '';
+    return;
+  }
+  await loadFriendStatuses();
   const results = await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`);
-  renderUserList(results);
+  renderSearchResults(results);
+});
+
+searchResultsEl.addEventListener('click', async (e) => {
+  if (e.target.dataset.addUser) {
+    const receiverId = e.target.dataset.addUser;
+    const request = await apiCall('/api/friends/request', {
+      method: 'POST',
+      body: JSON.stringify({ receiverId })
+    });
+    if (request.error) { alert(request.error); return; }
+    socket.emit('friend request sent', { receiverId, request });
+    await loadFriendStatuses();
+    const q = searchInput.value.trim();
+    if (q) renderSearchResults(await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`));
+  }
+
+  if (e.target.dataset.requestId && e.target.dataset.acceptUser) {
+    const requestId = e.target.dataset.requestId;
+    const senderId = e.target.dataset.acceptUser;
+    const updated = await apiCall(`/api/friends/request/${requestId}/accept`, { method: 'PUT' });
+    if (updated.error) { alert(updated.error); return; }
+    socket.emit('friend request accepted', { senderId, receiverId: currentUser.id, request: updated });
+    await loadFriendStatuses();
+    await loadFriends();
+    const q = searchInput.value.trim();
+    if (q) renderSearchResults(await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`));
+  }
+});
+
+async function loadPendingRequests() {
+  const requests = await apiCall('/api/friends/requests/pending');
+  renderPendingList(requests);
+  return requests;
+}
+
+function renderPendingList(requests) {
+  pendingListEl.innerHTML = '';
+  if (requests.length === 0) {
+    pendingCount.classList.add('hidden');
+  } else {
+    pendingCount.textContent = requests.length;
+    pendingCount.classList.remove('hidden');
+  }
+  requests.forEach(req => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span>${escapeHtml(req.sender.username)}</span>
+      <div class="pending-actions">
+        <button class="accept-btn" data-request-id="${req._id}" data-sender-id="${req.sender._id}">Accept</button>
+        <button class="reject-btn" data-request-id="${req._id}">Reject</button>
+      </div>`;
+    pendingListEl.appendChild(li);
+  });
+}
+
+pendingToggle.addEventListener('click', async () => {
+  await loadPendingRequests();
+  pendingPanel.classList.remove('hidden');
+});
+
+pendingPanelClose.addEventListener('click', () => {
+  pendingPanel.classList.add('hidden');
+});
+
+pendingListEl.addEventListener('click', async (e) => {
+  const requestId = e.target.dataset.requestId;
+  if (!requestId) return;
+
+  if (e.target.classList.contains('accept-btn')) {
+    const senderId = e.target.dataset.senderId;
+    const updated = await apiCall(`/api/friends/request/${requestId}/accept`, { method: 'PUT' });
+    if (updated.error) { alert(updated.error); return; }
+    socket.emit('friend request accepted', { senderId, receiverId: currentUser.id, request: updated });
+    await loadFriends();
+    await loadPendingRequests();
+  }
+
+  if (e.target.classList.contains('reject-btn')) {
+    const updated = await apiCall(`/api/friends/request/${requestId}/reject`, { method: 'PUT' });
+    if (updated.error) { alert(updated.error); return; }
+    socket.emit('friend request rejected', { senderId: updated.sender, requestId });
+    await loadPendingRequests();
+  }
 });
 
 async function selectUser(user) {
@@ -506,13 +657,18 @@ input.addEventListener('input', () => {
 });
 
 socket.on('private message', (msg) => {
-  if (!activeUser) return;
-  const isRelevant =
-    (msg.sender === activeUser._id && msg.receiver === currentUser.id) ||
-    (msg.sender === currentUser.id && msg.receiver === activeUser._id);
-  if (isRelevant) {
+  const senderId = msg.sender?._id || msg.sender;
+  const isActiveChat = activeUser && (
+    (senderId === activeUser._id && msg.receiver === currentUser.id) ||
+    (senderId === currentUser.id && msg.receiver === activeUser._id)
+  );
+  if (isActiveChat) {
     renderMessage(msg);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  } 
+  else if (senderId !== currentUser.id) {
+    unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
+    renderFriendsList();
   }
 });
 
@@ -528,6 +684,10 @@ socket.on('message edited', ({ messageId, message }) => {
   }
 });
 
+socket.on('error message', (msg) => {
+  alert(msg);
+});
+
 socket.on('typing', ({ senderId, isTyping }) => {
   if (activeUser && senderId === activeUser._id) {
     typingIndicator.textContent = isTyping ? `${activeUser.username} is typing...` : '';
@@ -539,6 +699,33 @@ socket.on('status change', ({ userId, isOnline }) => {
   if (user) user.isOnline = isOnline;
   renderUserList(allUsers);
   if (activeUser && activeUser._id === userId) activeUser.isOnline = isOnline;
+});
+
+socket.on('friendRequest', async () => {
+  await loadPendingRequests();
+});
+
+socket.on('friendAccepted', async () => {
+  await loadFriends();
+  await loadFriendStatuses();
+});
+
+socket.on('friendRejected', async () => {
+  // no UI action needed on sender side beyond an optional toast
+});
+
+socket.on('friendRemoved', async ({ userId }) => {
+  friendsList = friendsList.filter(f => f._id !== userId);
+  renderFriendsList();
+  if (activeUser && activeUser._id === userId) {
+    activeUser = null;
+    chatWithEl.textContent = 'Select a user to chat';
+    messagesEl.innerHTML = '';
+  }
+});
+
+socket.on('friendCancelled', async () => {
+  await loadFriendStatuses();
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -575,3 +762,5 @@ document.getElementById('profile-save-btn').addEventListener('click', async () =
 });
 
 loadUsers();
+loadFriendStatuses();
+loadPendingRequests();

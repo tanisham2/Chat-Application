@@ -16,7 +16,14 @@
         </div>
       </div>
       <input type="text" id="search-input" placeholder="Search users..." />
+      <ul id="search-results" class="hidden"></ul>
+      
+      <div class="sidebar-section-title"> Friends </div>
       <ul id="user-list"></ul>
+      
+      <div id="pending-requests-toggle" class="sidebar-section-title clickable">
+        Pending Requests <span id="pending-count" class="badge hidden">0</span>
+      </div>
     </div>
 
     <div id="chat-area">
@@ -65,6 +72,14 @@
       <button id="forward-close-btn">Cancel</button>
     </div>
   </div>
+</div>
+
+<div id="pending-panel" class="side-panel hidden">
+  <div class="side-panel-header">
+    <h3>Pending Requests</h3>
+    <span id="pending-panel-close">✕</span>
+  </div>
+  <ul id="pending-list"></ul>
 </div>
 
   <script src="/socket.io/socket.io.js"></script>

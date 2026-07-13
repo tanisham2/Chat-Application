@@ -1,8 +1,17 @@
 const Message = require('../models/Message');
+const User = require('../models/User');
 
 exports.getConversation = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    const me = await User.findById(req.userId);
+    if (!me.friends.map(id => id.toString()).includes(userId)) {
+      return res.status(403).json({ 
+        error: 'You can only chat with friends' 
+      });
+    }
+
     const messages = await Message.find({
       $or: [
         { sender: req.userId, receiver: userId },
