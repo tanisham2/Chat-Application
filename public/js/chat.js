@@ -66,33 +66,14 @@ function timeAgo(date) {
   return new Date(date).toLocaleDateString();
 }
 
-function renderFriendsList() {
-  userListEl.innerHTML = '';
-  friendsList.forEach(user => {
-    const li = document.createElement('li');
-    li.dataset.id = user._id;
-    const unread = unreadCounts[user._id] || 0;
-    li.innerHTML = `
-      <div class="friend-info">
-        <span>${escapeHtml(user.username)}</span>
-        <span class="friend-lastseen">${user.isOnline ? 'Online' : `Last seen ${timeAgo(user.lastSeen)}`}</span>
-      </div>
-      <div>
-        <span class="status-dot ${user.isOnline ? 'online' : ''}"></span>
-        ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
-      </div>`;
-    if (activeUser && activeUser._id === user._id) li.classList.add('active');
-    li.addEventListener('click', () => {
-      unreadCounts[user._id] = 0;
-      selectUser(user);
-    });
-    userListEl.appendChild(li);
-  });
-}
-
 async function loadFriends() {
   friendsList = await apiCall('/api/friends');
   renderFriendsList();
+  const lastId = localStorage.getItem('lastActiveUserId');
+  if (lastId) {
+    const lastUser = friendsList.find(u => u._id === lastId);
+    if (lastUser) selectUser(lastUser);
+  }
 }
 
 async function loadFriendStatuses() {
@@ -221,8 +202,10 @@ pendingListEl.addEventListener('click', async (e) => {
 
 async function selectUser(user) {
   activeUser = user;
+  localStorage.setItem('lastActiveUserId', user._id);
   chatWithEl.textContent = user.username;
-  renderUserList(allUsers);
+  renderFriendsList();
+  
   const messages = await apiCall(`/api/messages/${user._id}`);
   messagesEl.innerHTML = '';
   messages.forEach(renderMessage);
@@ -695,10 +678,11 @@ socket.on('typing', ({ senderId, isTyping }) => {
 });
 
 socket.on('status change', ({ userId, isOnline }) => {
-  const user = allUsers.find(u => u._id === userId);
+  const user = friendsList.find(u => u._id === userId);
   if (user) user.isOnline = isOnline;
-  renderUserList(allUsers);
-  if (activeUser && activeUser._id === userId) activeUser.isOnline = isOnline;
+  renderFriendsList();
+  if (activeUser && activeUser._id === userId) 
+    activeUser.isOnline = isOnline;
 });
 
 socket.on('friendRequest', async () => {
@@ -842,13 +826,20 @@ function renderFriendsList() {
         ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
       </div>`;
     if (activeUser && activeUser._id === user._id) li.classList.add('active');
-    li.addEventListener('click', () => {
-      unreadCounts[user._id] = 0;
-      selectUser(user);
-    });
     userListEl.appendChild(li);
   });
 }
+
+userListEl.addEventListener('click', (e) => {
+  const li = e.target.closest('li');
+  if (!li) return;
+
+  const userId = li.dataset.id;
+  const user = friendsList.find(u => u._id === userId);
+  if (!user) return;
+  unreadCounts[userId] = 0;
+  selectUser(user);
+});
 
 async function loadFriends() {
   friendsList = await apiCall('/api/friends');
@@ -1023,7 +1014,9 @@ function renderMessage(msg) {
       </div>`;
   }
 
-  content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}${msg.isPinned ? ' 📌' : ''}</span>`;
+  content += `<span class="meta">${
+  new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}${msg.isPinned ? ' 📌' : ''}
+  </span>`;
 
   if (msg.reactions && msg.reactions.length > 0) {
     const counts = {};
