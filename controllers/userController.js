@@ -17,10 +17,14 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, avatar } = req.body;
+    const { username } = req.body;
+    const updateData = {};
+    if (username) updateData.username = username;
+    if (req.file) updateData.avatar = `/uploads/${req.file.filename}`;
+    
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { ...(username && { username }), ...(avatar && { avatar }) },
+      updateData,
       { new: true }
     ).select('-password');
     res.json(user);

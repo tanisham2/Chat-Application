@@ -6,6 +6,7 @@ if (!token || !currentUser) {
 }
 
 document.getElementById('my-username').textContent = currentUser.username;
+myAvatarEl.outerHTML = getAvatarHtml(currentUser).replace('avatar-circle', 'avatar-circle" id="my-avatar');
 
 const socket = io({ auth: { token } });
 
@@ -22,6 +23,9 @@ const profileBtn = document.getElementById('profile-btn');
 const profileModal = document.getElementById('profile-modal');
 const profileUsernameInput = document.getElementById('profile-username');
 const profileAvatarInput = document.getElementById('profile-avatar');
+const profileAvatarPreview = document.getElementById('profile-avatar-preview');
+const myAvatarEl = document.getElementById('my-avatar');
+let selectedProfileAvatarFile = null;
 
 const searchResultsEl = document.getElementById('search-results');
 const pendingToggle = document.getElementById('pending-requests-toggle');
@@ -788,7 +792,7 @@ socket.on('friendCancelled', async () => {
   await loadFriendStatuses();
 });
 
-//logout / profile
+//logout and profile
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await apiCall('/api/auth/logout', { method: 'POST' });
   localStorage.clear();
@@ -798,8 +802,30 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 profileBtn.addEventListener('click', async () => {
   const profile = await apiCall('/api/users/profile');
   profileUsernameInput.value = profile.username;
-  profileAvatarInput.value = profile.avatar || '';
+  selectedProfileAvatarFile = null;
+
+  if (profile.avatar) {
+    profileAvatarPreview.style.backgroundImage = `url(${profile.avatar})`;
+    profileAvatarPreview.textContent = '';
+  } 
+  else {
+    profileAvatarPreview.style.backgroundImage = '';
+    profileAvatarPreview.textContent = (profile.username || '?').charAt(0).toUpperCase();
+  }
   profileModal.classList.remove('hidden');
+});
+
+profileAvatarFileInput.addEventListener('change', () => {
+  const file = profileAvatarFileInput.files[0];
+  if (!file) 
+    return;
+  selectedProfileAvatarFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    profileAvatarPreview.style.backgroundImage = `url(${e.target.result})`;
+    profileAvatarPreview.textContent = '';
+  };
+  reader.readAsDataURL(file);
 });
 
 document.getElementById('profile-close-btn').addEventListener('click', () => {
@@ -807,17 +833,28 @@ document.getElementById('profile-close-btn').addEventListener('click', () => {
 });
 
 document.getElementById('profile-save-btn').addEventListener('click', async () => {
-  const updated = await apiCall('/api/users/profile', {
+  const formData = new FormData();
+  formData.append('username', profileUsernameInput.value.trim());
+  if (selectedProfileAvatarFile) formData.append('avatar', selectedProfileAvatarFile);
+
+  const res = await fetch('/api/users/profile', {
     method: 'PUT',
-    body: JSON.stringify({
-      username: profileUsernameInput.value.trim(),
-      avatar: profileAvatarInput.value.trim()
-    })
+    headers: { 
+      Authorization: `Bearer ${token}` 
+    },
+    body: formData
   });
+  const updated = await res.json();
+  if (!res.ok) {
+    alert(updated.error || 'Failed to update profile');
+    return;
+  }
+
   currentUser.username = updated.username;
   currentUser.avatar = updated.avatar;
   localStorage.setItem('user', JSON.stringify(currentUser));
   document.getElementById('my-username').textContent = updated.username;
+  document.getElementById('my-avatar').outerHTML = getAvatarHtml(currentUser).replace('avatar-circle', 'avatar-circle" id="my-avatar');
   profileModal.classList.add('hidden');
 });
 

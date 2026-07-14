@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const path = require('path');
+
 const { register, login, logout, forgotPassword, resetPassword, verifyOtp } = require('../controllers/authController');
 const protect = require('../middleware/authMiddleware');
 
