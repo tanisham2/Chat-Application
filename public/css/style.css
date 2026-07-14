@@ -182,13 +182,33 @@ body {
   border: 1px solid #ccc; 
   border-radius: 4px; 
 }
-#form button, #image-label { 
-  padding: 10px 16px; 
+#form button[type="submit"] { 
+  padding: 10px 20px; 
   background: #1a0bf3; 
   color: #fff; 
   border: none; 
   border-radius: 4px; 
   cursor: pointer; 
+  font-weight: bold;
+}
+
+#form button[type="submit"]:hover { background: #1408c9; }
+
+#image-label, #emoji-btn, #voice-btn {
+  background: none;
+  border: none;
+  color: #666;
+  padding: 8px 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.3em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+#image-label:hover, #emoji-btn:hover, #voice-btn:hover {
+  background: #f0f0f0;
 }
 #image-input {
    display: none; 
@@ -280,13 +300,6 @@ body {
   cursor: pointer; 
 }
 
-#emoji-btn, #voice-btn {
-  background: none;
-  font-size: 1.3em;
-  padding: 6px 10px;
-  border: none;
-  cursor: pointer;
-}
 #voice-btn.recording {
   animation: pulse 1s infinite;
   color: red;
@@ -408,15 +421,21 @@ body[data-theme="dark"] .reply-quote {
   margin-bottom: 2px; 
 }
 
-.msg-actions { 
+.msg-actions {
+  display: none;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.7em;
+}
+#messages li:hover .msg-actions { 
   display: flex; 
-  gap: 8px; 
-  margin-top: 4px; 
-  font-size: 0.7em; 
 }
 .msg-actions span { 
   cursor: pointer; 
   text-decoration: underline; 
+}
+.msg-bubble-content { 
+  flex: 1; 
 }
 
 .reaction-summary { 
@@ -625,5 +644,34 @@ body[data-theme="dark"] #pending-list li {
   border-color: #3a3a55; 
 }
 body[data-theme="dark"] .sidebar-section-title { 
-  color: #aaa; 
+  color: hsl(0, 0%, 67%); 
 }
+
+.avatar-upload-wrap {
+  display: flex; flex-direction: column; align-items: center; margin-bottom: 16px;
+}
+.avatar-preview {
+  width: 70px; height: 70px; border-radius: 50%;
+  background: #eee; background-size: cover; background-position: center;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5em; color: #999; cursor: pointer;
+  border: 2px dashed #ccc;
+}
+.avatar-upload-hint { font-size: 0.75em; color: #888; margin-top: 6px; }
+
+.avatar-circle {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #1a0bf3; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold; font-size: 0.9em; flex-shrink: 0;
+  background-size: cover; background-position: center;
+}
+.avatar-circle.small { width: 28px; height: 28px; font-size: 0.75em; }
+
+#user-list li { gap: 10px; }
+.friend-info { flex: 1; }
+li.own .msg-with-avatar, li.other .msg-with-avatar {
+  display: flex; gap: 8px; align-items: flex-end;
+}
+
+.success-text { color: #2ecc71; font-size: 0.9em; margin-bottom: 10px; }

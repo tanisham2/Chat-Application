@@ -34,7 +34,15 @@ const userSchema = new mongoose.Schema({
   friends: [{
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User' 
-  }]
+  }],
+  resetOtp: {
+    type: String,
+    default: null
+  },
+  resetOtpExpiry: {
+    type: Date,
+    default: null
+  }
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

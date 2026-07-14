@@ -8,6 +8,13 @@
   <div class="auth-container">
     <h2> Register </h2>
     <p id="error-msg" class="error-text"></p>
+    
+    <div class="avatar-upload-wrap">
+      <label for="avatar-input" class="avatar-preview" id="avatar-preview">+</label>
+      <input type="file" id="avatar-input" accept="image/*" style="display:none" />
+      <span class="avatar-upload-hint">Add profile photo (optional)</span>
+    </div>
+
     <input type="text" id="username" placeholder="Username" />
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Password" />

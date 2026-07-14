@@ -64,6 +64,14 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function getAvatarHtml(user, sizeClass = '') {
+  if (user.avatar) {
+    return `<div class="avatar-circle ${sizeClass}" style="background-image:url('${user.avatar}')"></div>`;
+  }
+  const initial = (user.username || '?').charAt(0).toUpperCase();
+  return `<div class="avatar-circle ${sizeClass}">${initial}</div>`;
+}
+
 function timeAgo(date) {
   const diff = Math.floor((Date.now() - new Date(date)) / 1000);
   if (diff < 60) return 'just now';
@@ -79,7 +87,9 @@ function renderFriendsList() {
     const li = document.createElement('li');
     li.dataset.id = user._id;
     const unread = unreadCounts[user._id] || 0;
+    
     li.innerHTML = `
+      ${getAvatarHtml(user)}
       <div class="friend-info">
         <span>${escapeHtml(user.username)}</span>
         <span class="friend-lastseen">${user.isOnline ? 'Online' : `Last seen ${timeAgo(user.lastSeen)}`}</span>
@@ -88,10 +98,10 @@ function renderFriendsList() {
         <span class="status-dot ${user.isOnline ? 'online' : ''}"></span>
         ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
       </div>`;
-    if (activeUser && activeUser._id === user._id) li.classList.add('active');
-    userListEl.appendChild(li);
-  });
-}
+      if (activeUser && activeUser._id === user._id) li.classList.add('active');
+      userListEl.appendChild(li);
+    });
+  }
 
 userListEl.addEventListener('click', (e) => {
   const li = e.target.closest('li');
@@ -269,9 +279,11 @@ function renderMessage(msg) {
   li.className = isOwn ? 'own' : 'other';
   li.dataset.id = msg._id;
   li.dataset.raw = JSON.stringify(msg);
-
   let content = '';
-  if (msg.forwardedFrom) content += `<div class="forwarded-label">↪ Forwarded</div>`;
+
+  if (msg.forwardedFrom) {
+    content += `<div class="forwarded-label">↪ Forwarded</div>`;
+  }
   if (msg.replyTo) {
     const replyText = msg.replyTo.message || (msg.replyTo.image ? '📷 Image' : (msg.replyTo.audio ? '🎤 Voice message' : ''));
     content += `<div class="reply-quote">${escapeHtml(replyText)}</div>`;
@@ -290,8 +302,7 @@ function renderMessage(msg) {
       </div>`;
   }
 
-  content += `<span class="meta">${new Date(msg.timestamp).
-  toLocaleString()}${msg.isEdited ? ' (edited)' : ''}${msg.isPinned ? ' 📌' : ''}</span>`;
+  content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}${msg.isPinned ? ' 📌' : ''}</span>`;
 
   if (msg.reactions && msg.reactions.length > 0) {
     const counts = {};
@@ -302,7 +313,6 @@ function renderMessage(msg) {
     });
     content += `</div>`;
   }
-
   content += `<div class="msg-actions">`;
   content += `<span class="react-btn" data-id="${msg._id}">😊</span>`;
   content += `<span class="reply-btn" data-id="${msg._id}">Reply</span>`;
@@ -316,7 +326,10 @@ function renderMessage(msg) {
   }
   content += `</div>`;
 
-  li.innerHTML = content;
+  const avatarUser = isOwn ? currentUser : (activeUser || { username: '?' });
+  const avatarHtml = getAvatarHtml(avatarUser, 'small');
+
+  li.innerHTML = `<div class="msg-with-avatar">${isOwn ? '' : avatarHtml}<div class="msg-bubble-content">${content}</div>${isOwn ? avatarHtml : ''}</div>`;
   messagesEl.appendChild(li);
 }
 
@@ -324,15 +337,29 @@ function renderMessageInPlace(msg, li) {
   const isOwn = msg.sender === currentUser.id || msg.sender?._id === currentUser.id;
   li.className = isOwn ? 'own' : 'other';
   li.dataset.id = msg._id;
+  li.dataset.raw = JSON.stringify(msg);
+
   let content = '';
   if (msg.message) content += `<div class="msg-text">${escapeHtml(msg.message)}</div>`;
   if (msg.image) content += `<img src="${msg.image}" />`;
   content += `<span class="meta">${new Date(msg.timestamp).toLocaleString()}${msg.isEdited ? ' (edited)' : ''}</span>`;
+  content += `<div class="msg-actions">`;
+  content += `<span class="react-btn" data-id="${msg._id}">😊</span>`;
+  content += `<span class="reply-btn" data-id="${msg._id}">Reply</span>`;
+  content += `<span class="forward-btn" data-id="${msg._id}">Forward</span>`;
+  content += `<span class="pin-btn" data-id="${msg._id}">${msg.isPinned ? 'Unpin' : 'Pin'}</span>`;
   if (isOwn && !msg.isDeleted) {
     content += `<span class="delete-btn" data-id="${msg._id}">Delete</span>`;
-    if (msg.message && !msg.image) content += ` <span class="edit-btn" data-id="${msg._id}">Edit</span>`;
+    if (msg.message && !msg.image && !msg.audio) {
+      content += `<span class="edit-btn" data-id="${msg._id}">Edit</span>`;
+    }
   }
-  li.innerHTML = content;
+  content += `</div>`;
+
+  const avatarUser = isOwn ? currentUser : (activeUser || { username: '?' });
+  const avatarHtml = getAvatarHtml(avatarUser, 'small');
+
+  li.innerHTML = `<div class="msg-with-avatar">${isOwn ? '' : avatarHtml}<div class="msg-bubble-content">${content}</div>${isOwn ? avatarHtml : ''}</div>`;
 }
 
 messagesEl.addEventListener('click', async (e) => {
