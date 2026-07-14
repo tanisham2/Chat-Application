@@ -6,8 +6,6 @@ if (!token || !currentUser) {
 }
 
 document.getElementById('my-username').textContent = currentUser.username;
-myAvatarEl.outerHTML = getAvatarHtml(currentUser).replace('avatar-circle', 'avatar-circle" id="my-avatar');
-
 const socket = io({ auth: { token } });
 
 const userListEl = document.getElementById('user-list');
@@ -26,6 +24,10 @@ const profileAvatarInput = document.getElementById('profile-avatar');
 const profileAvatarPreview = document.getElementById('profile-avatar-preview');
 const myAvatarEl = document.getElementById('my-avatar');
 let selectedProfileAvatarFile = null;
+
+if (myAvatarEl) {
+  myAvatarEl.outerHTML = getAvatarHtml(currentUser).replace('avatar-circle', 'avatar-circle" id="my-avatar');
+}
 
 const searchResultsEl = document.getElementById('search-results');
 const pendingToggle = document.getElementById('pending-requests-toggle');
@@ -854,7 +856,11 @@ document.getElementById('profile-save-btn').addEventListener('click', async () =
   currentUser.avatar = updated.avatar;
   localStorage.setItem('user', JSON.stringify(currentUser));
   document.getElementById('my-username').textContent = updated.username;
-  document.getElementById('my-avatar').outerHTML = getAvatarHtml(currentUser).replace('avatar-circle', 'avatar-circle" id="my-avatar');
+
+  const avatarEl = document.getElementById('my-avatar');
+  if (avatarEl) {
+    avatarEl.outerHTML = getAvatarHtml(currentUser).replace('avatar-circle', 'avatar-circle" id="my-avatar');
+  }
   profileModal.classList.add('hidden');
 });
 
