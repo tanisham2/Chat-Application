@@ -108,95 +108,100 @@ function renderFriendsList() {
       userListEl.appendChild(li);
     });
   }
-
-userListEl.addEventListener('click', (e) => {
-  const li = e.target.closest('li');
-  if (!li) return;
-  const userId = li.dataset.id;
-  const user = friendsList.find(u => u._id === userId);
-  if (!user) return;
-  unreadCounts[userId] = 0;
-  selectUser(user);
-});
-
-async function loadFriends() {
-  friendsList = await apiCall('/api/friends');
-  renderFriendsList();
-}
-
-async function loadFriendStatuses() {
-  friendStatuses = await apiCall('/api/friends/statuses');
-}
-
-function getRelationshipButton(user) {
-  if (friendStatuses.friends.includes(user._id)) {
-    return `<button class="friend-action-btn friends" disabled> Friends ✓</button>`;
-  }
-  const sent = friendStatuses.sent.find(s => s.userId === user._id);
-  if (sent) {
-    return `<button class="friend-action-btn sent" disabled>Request Sent</button>`;
-  }
-  const received = friendStatuses.received.find(r => r.userId === user._id);
-  if (received) {
-    return `<button class="friend-action-btn accept" data-request-id="${received.requestId}" data-accept-user="${user._id}">
-    Accept Request</button>`;
-  }
-  return `<button class="friend-action-btn add" data-add-user="${user._id}">+ Add Friend</button>`;
-}
-
-function renderSearchResults(users) {
-  searchResultsEl.innerHTML = '';
-  searchResultsEl.classList.remove('hidden');
-  users.forEach(user => {
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="friend-username">${escapeHtml(user.username)}</span>${getRelationshipButton(user)}`;
-    searchResultsEl.appendChild(li);
+  
+  userListEl.addEventListener('click', (e) => {
+    const li = e.target.closest('li');
+    if (!li) return;
+    const userId = li.dataset.id;
+    const user = friendsList.find(u => u._id === userId);
+    if (!user) return;
+    unreadCounts[userId] = 0;
+    selectUser(user);
   });
-}
-
-searchInput.addEventListener('input', async () => {
-  const q = searchInput.value.trim();
-  if (!q) {
-    searchResultsEl.classList.add('hidden');
-    searchResultsEl.innerHTML = '';
-    return;
+  
+  async function loadFriends() {
+    friendsList = await apiCall('/api/friends');
+    renderFriendsList();
   }
-  await loadFriendStatuses();
-  const results = await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`);
-  renderSearchResults(results);
-});
-
-searchResultsEl.addEventListener('click', async (e) => {
-  if (e.target.dataset.addUser) {
-    const receiverId = e.target.dataset.addUser;
-    const request = await apiCall('/api/friends/request', {
-      method: 'POST',
-      body: JSON.stringify({ receiverId })
-    });
-    if (request.error) { 
-      alert(request.error); 
-      return; 
+  
+  async function loadFriendStatuses() {
+    friendStatuses = await apiCall('/api/friends/statuses');
+  }
+  
+  function getRelationshipButton(user) {
+    if (friendStatuses.friends.includes(user._id)) {
+      return `<button class="friend-action-btn friends" disabled> Friends ✓</button>`;
     }
-    socket.emit('friend request sent', { receiverId, request });
-    await loadFriendStatuses();
-    const q = searchInput.value.trim();
-    if (q) renderSearchResults(await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`));
+    
+    const sent = friendStatuses.sent.find(s => s.userId === user._id);
+    if (sent) {
+      return `<button class="friend-action-btn sent" disabled>Request Sent</button>`;
+    }
+    const received = friendStatuses.received.find(r => r.userId === user._id);
+    if (received) {
+      return `<button class="friend-action-btn accept" data-request-id="${received.requestId}" data-accept-user="${user._id}">
+      Accept Request</button>`;
+    }
+    return `<button class="friend-action-btn add" data-add-user="${user._id}">+ Add Friend</button>`;
   }
-
-  if (e.target.dataset.requestId && e.target.dataset.acceptUser) {
-    const requestId = e.target.dataset.requestId;
-    const senderId = e.target.dataset.acceptUser;
-    const updated = await apiCall(`/api/friends/request/${requestId}/accept`, { method: 'PUT' });
-    if (updated.error) { alert(updated.error); return; }
-    socket.emit('friend request accepted', { 
-      senderId, receiverId: currentUser.id, request: updated 
+  
+  function renderSearchResults(users) {
+    searchResultsEl.innerHTML = '';
+    searchResultsEl.classList.remove('hidden');
+    users.forEach(user => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="friend-username">${escapeHtml(user.username)}</span>${getRelationshipButton(user)}`;
+      searchResultsEl.appendChild(li);
     });
-    await loadFriendStatuses();
-    await loadFriends();
-    const q = searchInput.value.trim();
-    if (q) renderSearchResults(await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`));
   }
-});
+  
+  searchInput.addEventListener('input', async () => {
+    const q = searchInput.value.trim();
+    if (!q) {
+      searchResultsEl.classList.add('hidden');
+      searchResultsEl.innerHTML = '';
+      return;
+    }
+    
+    await loadFriendStatuses();
+    const results = await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`);
+    renderSearchResults(results);
+  });
+  
+  searchResultsEl.addEventListener('click', async (e) => {
+    if (e.target.dataset.addUser) {
+      const receiverId = e.target.dataset.addUser;
+      const request = await apiCall('/api/friends/request', {
+        method: 'POST',
+        body: JSON.stringify({ receiverId })
+      });
+      if (request.error) { 
+        alert(request.error); 
+        return; 
+      }
+      socket.emit('friend request sent', { receiverId, request });
+      await loadFriendStatuses();
+      const q = searchInput.value.trim();
+      if (q) renderSearchResults(await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`));
+    }
+    
+    if (e.target.dataset.requestId && e.target.dataset.acceptUser) {
+      const requestId = e.target.dataset.requestId;
+      const senderId = e.target.dataset.acceptUser;
+      const updated = await apiCall(`/api/friends/request/${requestId}/accept`, { method: 'PUT' });
+      if (updated.error) { 
+        alert(updated.error); 
+        return; 
+      }
+      socket.emit('friend request accepted', { 
+        senderId, receiverId: currentUser.id, request: updated 
+      });
+      await loadFriendStatuses();
+      await loadFriends();
+      const q = searchInput.value.trim();
+      if (q) renderSearchResults(await apiCall(`/api/users/search?q=${encodeURIComponent(q)}`));
+    }
+  });
 
 //pending requests
 async function loadPendingRequests() {

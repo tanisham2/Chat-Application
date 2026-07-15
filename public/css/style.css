@@ -38,18 +38,21 @@ body {
 }
 .auth-container p { 
   margin-top: 12px; 
-  text-align: center; }
+  text-align: center; 
+}
 .error-text { 
   color: red; 
   font-size: 0.9em; 
-  margin-bottom: 10px; }
+  margin-bottom: 10px; 
+}
 
 #chat-container { 
   display: flex; 
   height: 100vh; 
   max-width: 1200px; 
   margin: 0 auto; 
-  background: #fff; }
+  background: #fff; 
+}
 
 #sidebar {
   width: 300px; 
@@ -113,7 +116,8 @@ body {
   flex: 1; 
   display: flex; 
   flex-direction: column; 
-  padding: 15px; }
+  padding: 15px; 
+}
 #chat-header { 
   padding-bottom: 10px; 
   border-bottom: 1px solid #ddd; 
@@ -152,7 +156,7 @@ body {
 }
 #messages li .delete-btn { 
   font-size: 0.7em;
- cursor: pointer;
+  cursor: pointer;
   margin-left: 8px; 
   text-decoration: underline; 
 }
@@ -596,7 +600,6 @@ body[data-theme="dark"] .friend-name {
   margin-left: 6px;
 }
 
-/* Side panel */
 .side-panel {
   position: fixed; 
   top: 0; 
