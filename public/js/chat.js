@@ -97,7 +97,7 @@ function renderFriendsList() {
     li.innerHTML = `
       ${getAvatarHtml(user)}
       <div class="friend-info">
-        <span>${escapeHtml(user.username)}</span>
+        <span class="friend-name">${escapeHtml(user.username)}</span>
         <span class="friend-lastseen">${user.isOnline ? 'Online' : `Last seen ${timeAgo(user.lastSeen)}`}</span>
       </div>
       <div>
@@ -149,7 +149,7 @@ function renderSearchResults(users) {
   searchResultsEl.classList.remove('hidden');
   users.forEach(user => {
     const li = document.createElement('li');
-    li.innerHTML = `<span>${escapeHtml(user.username)}</span>${getRelationshipButton(user)}`;
+    li.innerHTML = `<span class="friend-username">${escapeHtml(user.username)}</span>${getRelationshipButton(user)}`;
     searchResultsEl.appendChild(li);
   });
 }

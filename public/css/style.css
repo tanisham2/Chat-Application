@@ -192,7 +192,9 @@ body {
   font-weight: bold;
 }
 
-#form button[type="submit"]:hover { background: #1408c9; }
+#form button[type="submit"]:hover { 
+  background: #1408c9; 
+}
 
 #image-label, #emoji-btn, #voice-btn {
   background: none;
@@ -310,9 +312,17 @@ body {
   100% { opacity: 1; }
 }
 
-.voice-message { margin: 6px 0; }
-.voice-audio { width: 220px; }
-.speed-controls { display: flex; gap: 6px; margin-top: 4px; }
+.voice-message { 
+  margin: 6px 0; 
+}
+.voice-audio { 
+  width: 220px; 
+}
+.speed-controls { 
+  display: flex; 
+  gap: 6px; 
+  margin-top: 4px; 
+}
 .speed-btn {
   font-size: 0.7em;
   padding: 2px 8px;
@@ -574,6 +584,9 @@ body[data-theme="dark"] .reply-quote {
   font-size: 0.7em; 
   color: #888; 
 }
+body[data-theme="dark"] .friend-name {
+    color: #eee;
+}
 .unread-badge {
   background: #1a0bf3; 
   color: #fff; 
@@ -648,37 +661,82 @@ body[data-theme="dark"] .sidebar-section-title {
 }
 
 .avatar-upload-wrap {
-  display: flex; flex-direction: column; align-items: center; margin-bottom: 16px;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  margin-bottom: 16px;
 }
 .avatar-preview {
-  width: 70px; height: 70px; border-radius: 50%;
-  background: #eee; background-size: cover; background-position: center;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.5em; color: #999; cursor: pointer;
+  width: 70px; 
+  height: 70px; 
+  border-radius: 50%;
+  background: #eee; 
+  background-size: cover; 
+  background-position: center;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-size: 1.5em; 
+  color: #999; 
+  cursor: pointer;
   border: 2px dashed #ccc;
 }
-.avatar-upload-hint { font-size: 0.75em; color: #888; margin-top: 6px; }
+.avatar-upload-hint { 
+  font-size: 0.75em; 
+  color: #888; 
+  margin-top: 6px;
+}
 
 .avatar-circle {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: #1a0bf3; color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: bold; font-size: 0.9em; flex-shrink: 0;
-  background-size: cover; background-position: center;
+  width: 36px; 
+  height: 36px; 
+  border-radius: 50%;
+  background: #1a0bf3; 
+  color: #fff;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-weight: bold; 
+  font-size: 0.9em; 
+  flex-shrink: 0;
+  background-size: cover; 
+  background-position: center;
 }
-.avatar-circle.small { width: 28px; height: 28px; font-size: 0.75em; }
+.avatar-circle.small { 
+  width: 28px; 
+  height: 28px; 
+  font-size: 0.75em; 
+}
 
-#user-list li { gap: 10px; }
-.friend-info { flex: 1; }
+#user-list li { 
+  gap: 10px; 
+}
+.friend-info { 
+  flex: 1; 
+}
 li.own .msg-with-avatar, li.other .msg-with-avatar {
-  display: flex; gap: 8px; align-items: flex-end;
+  display: flex; 
+  gap: 8px; 
+  align-items: flex-end;
 }
 
-.success-text { color: #2ecc71; font-size: 0.9em; margin-bottom: 10px; }
+.success-text { 
+  color: #2ecc71; 
+  font-size: 0.9em; 
+  margin-bottom: 10px; 
+}
 
-/* Sidebar layout: content on top, profile bar pinned to bottom */
-#sidebar { display: flex; flex-direction: column; height: 100%; padding: 0; }
-#sidebar-top { flex: 1; overflow-y: auto; padding: 15px; }
+#sidebar { 
+  display: flex; 
+  flex-direction: column; 
+  height: 100%; 
+  padding: 0; 
+}
+#sidebar-top { 
+  flex: 1; 
+  overflow-y: auto; 
+  padding: 15px; 
+}
 
 #profile-bar {
   display: flex;
@@ -688,9 +746,18 @@ li.own .msg-with-avatar, li.other .msg-with-avatar {
   border-top: 1px solid #ddd;
   background: #ececec;
 }
-#profile-bar-info { display: flex; align-items: center; gap: 8px; }
-#profile-bar-info strong { font-size: 0.95em; }
-#profile-bar-actions { display: flex; gap: 6px; }
+#profile-bar-info { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+}
+#profile-bar-info strong { 
+  font-size: 0.95em; 
+}
+#profile-bar-actions { 
+  display: flex; 
+  gap: 6px; 
+}
 
 #profile-bar-actions button {
   background: none;
@@ -701,14 +768,32 @@ li.own .msg-with-avatar, li.other .msg-with-avatar {
   cursor: pointer;
   color: #444;
 }
-#profile-bar-actions button:hover { background: #dcdcdc; }
-#logout-btn { color: #c0392b !important; border-color: #e0b4ae !important; }
-#logout-btn:hover { background: #fbe4e0 !important; }
+#profile-bar-actions button:hover { 
+  background: #dcdcdc; 
+}
+#logout-btn { 
+  color: #c0392b !important; 
+  border-color: #e0b4ae !important; 
+}
+#logout-btn:hover { 
+  background: #fbe4e0 !important; 
+}
 
-body[data-theme="dark"] #profile-bar { background: #23233a; border-color: #3a3a55; }
-body[data-theme="dark"] #profile-bar-actions button { border-color: #3a3a55; color: #ddd; }
-body[data-theme="dark"] #profile-bar-actions button:hover { background: #33334d; }
+body[data-theme="dark"] #profile-bar { 
+  background: #23233a; 
+  border-color: #3a3a55; 
+}
+body[data-theme="dark"] #profile-bar-actions button { 
+  border-color: #3a3a55; 
+  color: #ddd; 
+}
+body[data-theme="dark"] #profile-bar-actions button:hover { 
+  background: #33334d; 
+}
 
-/* Profile modal avatar upload (reuses .avatar-upload-wrap / .avatar-preview from register page) */
-#profile-modal .modal-box { text-align: center; }
-#profile-modal h3 { margin-bottom: 16px; }
+#profile-modal .modal-box { 
+  text-align: center; 
+}
+#profile-modal h3 { 
+  margin-bottom: 16px; 
+}
