@@ -1,19 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login: Chat App</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <title>Login - Chat App</title>
+  <link rel="stylesheet" href="/css/auth.css" />
 </head>
-<body>
-  <div class="auth-container">
-    <h2> Login </h2>
-    <p id="error-msg" class="error-text"></p>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    
-    <button id="login-btn">Login</button>
-    <p><a href="/forgot-password.html"> Forgot password? </a></p>
-    <p> Don't have an account? <a href="/register.html"> Register </a></p>
+<body class="auth-body">
+  <div class="auth-card">
+    <h2> Welcome back!🫶🏻 </h2>
+    <p class="auth-subtitle"> Log in to keep the conversation going 🤫 </p>
+
+    <div id="banner" class="banner-msg"></div>
+
+    <div class="form-group">
+      <label for="email"> Email </label>
+      <input type="email" id="email" class="auth-input" placeholder="you@gmail.com" />
+      <span class="field-error" id="email-error"></span>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <div class="input-wrap">
+        <input type="password" id="password" class="auth-input" placeholder="Enter your password" />
+        <button type="button" class="password-toggle" id="toggle-password">👁️</button>
+      </div>
+      <span class="field-error" id="password-error"></span>
+    </div>
+
+    <button id="login-btn" class="auth-btn">Login</button>
+
+    <div class="auth-links-row">
+      <a href="/forgot-password.html">Forgot password?</a>
+    </div>
+
+    <p class="auth-footer">Don't have an account? <a href="/register.html">Register</a></p>
   </div>
   <script src="/js/login.js"></script>
 </body>
