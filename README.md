@@ -28,18 +28,8 @@ Chat Application is a full-stack real-time messaging platform that enables secur
 
 ## Running the Application
 
-### Start Backend Server
-
 ```bash
-cd server
 npm run dev
-```
-
-### Start Frontend
-
-```bash
-cd client
-npm start
 ```
 
 ## API Features
